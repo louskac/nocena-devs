@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { AppState, Task, Developer } from '../types';
-import { loadData, saveData, isStorageAvailable } from '../storage';
+import { loadData, saveData, isStorageAvailable } from '../apiStorage';
 import { debounce, calculateDeveloperStats } from '../utils';
 
 // Helper function to generate default developer names
@@ -44,12 +44,12 @@ export function useTaskStorage() {
   const maxRetries = 3;
 
   // Enhanced debounced save function with error recovery
-  const saveFunction = useCallback((data: AppState) => {
+  const saveFunction = useCallback(async (data: AppState) => {
     setIsSaving(true);
     setError(null);
     
     try {
-      const success = saveData(data);
+      const success = await saveData(data);
       if (success) {
         setLastSaved(new Date());
         retryCountRef.current = 0;
@@ -64,14 +64,20 @@ export function useTaskStorage() {
       if (retryCountRef.current <= maxRetries) {
         console.log(`Retrying save operation (attempt ${retryCountRef.current}/${maxRetries})`);
         // Retry after a delay
-        setTimeout(() => {
-          const retrySuccess = saveData(data);
-          if (retrySuccess) {
-            setLastSaved(new Date());
-            retryCountRef.current = 0;
-            console.log('Data saved successfully on retry');
-          } else if (retryCountRef.current >= maxRetries) {
-            setError('Failed to save data after multiple attempts. Your changes may be lost.');
+        setTimeout(async () => {
+          try {
+            const retrySuccess = await saveData(data);
+            if (retrySuccess) {
+              setLastSaved(new Date());
+              retryCountRef.current = 0;
+              console.log('Data saved successfully on retry');
+            } else if (retryCountRef.current >= maxRetries) {
+              setError('Failed to save data after multiple attempts. Your changes may be lost.');
+            }
+          } catch {
+            if (retryCountRef.current >= maxRetries) {
+              setError('Failed to save data after multiple attempts. Your changes may be lost.');
+            }
           }
         }, 1000 * retryCountRef.current); // Exponential backoff
       } else {
@@ -91,11 +97,11 @@ export function useTaskStorage() {
   const loadDataWithRetry = useCallback(async (retryCount = 0) => {
     try {
       if (!isStorageAvailable()) {
-        throw new Error('localStorage is not available in this browser');
+        throw new Error('API storage is not available');
       }
 
-      console.log('Loading data from localStorage...');
-      const loadedData = loadData();
+      console.log('Loading data from API...');
+      const loadedData = await loadData();
       
       setState(loadedData);
       setError(null);
@@ -105,7 +111,7 @@ export function useTaskStorage() {
       });
       
     } catch (err) {
-      console.error('Storage loading error:', err);
+      console.error('API loading error:', err);
       
       if (retryCount < maxRetries) {
         console.log(`Retrying data load (attempt ${retryCount + 1}/${maxRetries})`);
@@ -359,7 +365,7 @@ export function useTaskStorage() {
   const forceSave = useCallback(async () => {
     setIsSaving(true);
     try {
-      const success = saveData(state);
+      const success = await saveData(state);
       if (success) {
         setLastSaved(new Date());
         console.log('Manual save completed successfully');
