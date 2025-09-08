@@ -44,45 +44,47 @@ export function useTaskStorage() {
   const maxRetries = 3;
 
   // Enhanced debounced save function with error recovery
-  const debouncedSave = useCallback(
-    debounce((data: AppState) => {
-      setIsSaving(true);
-      setError(null);
-      
-      try {
-        const success = saveData(data);
-        if (success) {
-          setLastSaved(new Date());
-          retryCountRef.current = 0;
-          console.log('Data saved successfully at', new Date().toISOString());
-        } else {
-          throw new Error('Save operation returned false');
-        }
-      } catch (err) {
-        console.error('Save error:', err);
-        retryCountRef.current++;
-        
-        if (retryCountRef.current <= maxRetries) {
-          console.log(`Retrying save operation (attempt ${retryCountRef.current}/${maxRetries})`);
-          // Retry after a delay
-          setTimeout(() => {
-            const retrySuccess = saveData(data);
-            if (retrySuccess) {
-              setLastSaved(new Date());
-              retryCountRef.current = 0;
-              console.log('Data saved successfully on retry');
-            } else if (retryCountRef.current >= maxRetries) {
-              setError('Failed to save data after multiple attempts. Your changes may be lost.');
-            }
-          }, 1000 * retryCountRef.current); // Exponential backoff
-        } else {
-          setError('Failed to save data after multiple attempts. Your changes may be lost.');
-        }
-      } finally {
-        setIsSaving(false);
+  const saveFunction = useCallback((data: AppState) => {
+    setIsSaving(true);
+    setError(null);
+    
+    try {
+      const success = saveData(data);
+      if (success) {
+        setLastSaved(new Date());
+        retryCountRef.current = 0;
+        console.log('Data saved successfully at', new Date().toISOString());
+      } else {
+        throw new Error('Save operation returned false');
       }
-    }, 500),
-    []
+    } catch (err) {
+      console.error('Save error:', err);
+      retryCountRef.current++;
+      
+      if (retryCountRef.current <= maxRetries) {
+        console.log(`Retrying save operation (attempt ${retryCountRef.current}/${maxRetries})`);
+        // Retry after a delay
+        setTimeout(() => {
+          const retrySuccess = saveData(data);
+          if (retrySuccess) {
+            setLastSaved(new Date());
+            retryCountRef.current = 0;
+            console.log('Data saved successfully on retry');
+          } else if (retryCountRef.current >= maxRetries) {
+            setError('Failed to save data after multiple attempts. Your changes may be lost.');
+          }
+        }, 1000 * retryCountRef.current); // Exponential backoff
+      } else {
+        setError('Failed to save data after multiple attempts. Your changes may be lost.');
+      }
+    } finally {
+      setIsSaving(false);
+    }
+  }, [maxRetries]);
+
+  const debouncedSave = useCallback(
+    debounce(saveFunction, 500),
+    [saveFunction]
   );
 
   // Enhanced data loading with error recovery

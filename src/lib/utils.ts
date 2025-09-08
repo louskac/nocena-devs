@@ -84,7 +84,7 @@ export function calculateDeveloperStats(tasks: Task[], developerId: string) {
 }
 
 // Debounce function for storage operations
-export function debounce<T extends (...args: unknown[]) => unknown>(
+export function debounce<T extends (...args: never[]) => void>(
   func: T,
   delay: number
 ): (...args: Parameters<T>) => void {

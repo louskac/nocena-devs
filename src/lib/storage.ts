@@ -1,4 +1,4 @@
-import { AppState, StorageData } from './types';
+import { AppState, StorageData, Task, Developer } from './types';
 
 const STORAGE_KEY = 'nocena-devs-data';
 const STORAGE_VERSION = '1.0';
@@ -16,7 +16,7 @@ function deserializeDates(data: unknown): unknown {
   }
   
   if (data && typeof data === 'object' && data.constructor === Object) {
-    const result = { ...data };
+    const result = { ...data } as Record<string, unknown>;
     
     // Convert date strings back to Date objects
     if (result.createdAt && typeof result.createdAt === 'string') {
@@ -45,23 +45,27 @@ function validateStorageData(data: unknown): data is StorageData {
     return false;
   }
   
-  if (!Array.isArray(data.tasks) || !Array.isArray(data.developers)) {
+  const dataObj = data as Record<string, unknown>;
+  
+  if (!Array.isArray(dataObj.tasks) || !Array.isArray(dataObj.developers)) {
     return false;
   }
   
   // Validate task structure
-  for (const task of data.tasks) {
-    if (!task.id || !task.name || typeof task.points !== 'number') {
+  for (const task of dataObj.tasks) {
+    const taskObj = task as Record<string, unknown>;
+    if (!taskObj.id || !taskObj.name || typeof taskObj.points !== 'number') {
       return false;
     }
-    if (!['backlog', 'assigned', 'completed'].includes(task.status)) {
+    if (!['backlog', 'assigned', 'completed'].includes(taskObj.status as string)) {
       return false;
     }
   }
   
   // Validate developer structure
-  for (const dev of data.developers) {
-    if (!dev.id || !dev.name || typeof dev.totalPoints !== 'number') {
+  for (const dev of dataObj.developers) {
+    const devObj = dev as Record<string, unknown>;
+    if (!devObj.id || !devObj.name || typeof devObj.totalPoints !== 'number') {
       return false;
     }
   }
@@ -101,7 +105,7 @@ export function loadData(): AppState {
     }
     
     // Deserialize dates and return the data
-    const deserializedData = deserializeDates(migratedData);
+    const deserializedData = deserializeDates(migratedData) as StorageData;
     
     return {
       tasks: deserializedData.tasks || [],
@@ -228,7 +232,7 @@ export function importData(jsonString: string): AppState {
       throw new Error('Invalid data format');
     }
     
-    const deserializedData = deserializeDates(parsed);
+    const deserializedData = deserializeDates(parsed) as StorageData;
     
     return {
       tasks: deserializedData.tasks || [],
@@ -257,12 +261,13 @@ export function isStorageAvailable(): boolean {
 export function migrateData(data: unknown): StorageData {
   // Currently no migrations needed, but this function
   // can be extended when the data structure changes
-  if (!data.version) {
+  const dataObj = data as Record<string, unknown>;
+  if (!dataObj.version) {
     // Add version to legacy data
-    data.version = STORAGE_VERSION;
+    dataObj.version = STORAGE_VERSION;
   }
   
-  return data;
+  return dataObj as unknown as StorageData;
 }
 
 // Attempt to recover partial data from corrupted storage
@@ -273,25 +278,29 @@ function recoverPartialData(data: unknown): AppState | null {
       developers: []
     };
     
+    const dataObj = data as Record<string, unknown>;
+    
     // Try to recover tasks
-    if (Array.isArray(data.tasks)) {
-      recovered.tasks = (data as { tasks?: unknown[] }).tasks?.filter((task: unknown) => {
-        return task && 
-               typeof task.id === 'string' && 
-               typeof task.name === 'string' && 
-               typeof task.points === 'number' &&
-               ['backlog', 'assigned', 'completed'].includes(task.status);
-      });
+    if (Array.isArray(dataObj.tasks)) {
+      recovered.tasks = dataObj.tasks.filter((task: unknown) => {
+        const taskObj = task as Record<string, unknown>;
+        return taskObj && 
+               typeof taskObj.id === 'string' && 
+               typeof taskObj.name === 'string' && 
+               typeof taskObj.points === 'number' &&
+               ['backlog', 'assigned', 'completed'].includes(taskObj.status as string);
+      }) as Task[];
     }
     
     // Try to recover developers
-    if (Array.isArray(data.developers)) {
-      recovered.developers = (data as { developers?: unknown[] }).developers?.filter((dev: unknown) => {
-        return dev && 
-               typeof dev.id === 'string' && 
-               typeof dev.name === 'string' && 
-               typeof dev.totalPoints === 'number';
-      });
+    if (Array.isArray(dataObj.developers)) {
+      recovered.developers = dataObj.developers.filter((dev: unknown) => {
+        const devObj = dev as Record<string, unknown>;
+        return devObj && 
+               typeof devObj.id === 'string' && 
+               typeof devObj.name === 'string' && 
+               typeof devObj.totalPoints === 'number';
+      }) as Developer[];
     }
     
     // Only return recovered data if we got something useful
