@@ -145,11 +145,7 @@ export default function KanbanBoard() {
     });
   };
 
-  // Handle task editing
-  const handleTaskEdit = (taskId: string) => {
-    // For now, just log - this will be implemented later
-    console.log('Edit task:', taskId);
-  };
+
 
   if (isLoading) {
     return (
@@ -183,6 +179,7 @@ export default function KanbanBoard() {
 
   // Get tasks for different columns
   const backlogTasks = getTasksByStatus('backlog');
+  const completedTasks = getTasksByStatus('completed');
   const allDevelopers = developers.length > 0 ? developers : [
     // Default developer for demo purposes
     {
@@ -305,7 +302,6 @@ export default function KanbanBoard() {
                   tasks={backlogTasks}
                   isBacklog={true}
                   onTaskDrop={handleTaskDrop}
-                  onTaskEdit={handleTaskEdit}
                 />
               </div>
 
@@ -320,11 +316,20 @@ export default function KanbanBoard() {
                       developer={developer}
                       onTaskDrop={handleTaskDrop}
                       onTaskComplete={handleTaskComplete}
-                      onTaskEdit={handleTaskEdit}
                     />
                   </div>
                 );
               })}
+
+              {/* Finished Tasks Column */}
+              <div className="snap-start">
+                <TaskColumn
+                  title="Finished Tasks"
+                  tasks={completedTasks}
+                  isFinished={true}
+                  onTaskDrop={handleTaskDrop}
+                />
+              </div>
             </div>
           </div>
 

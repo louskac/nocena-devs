@@ -7,12 +7,12 @@ import { formatDate } from '@/lib/utils';
 interface TaskCardProps {
   task: Task;
   onComplete?: (taskId: string) => void;
-  onEdit?: (taskId: string) => void;
   isDragging?: boolean;
 }
 
-export default function TaskCard({ task, onComplete, onEdit, isDragging = false }: TaskCardProps) {
+export default function TaskCard({ task, onComplete, isDragging = false }: TaskCardProps) {
   const [dragOver, setDragOver] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   // Handle drag start
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
@@ -80,7 +80,7 @@ export default function TaskCard({ task, onComplete, onEdit, isDragging = false 
     >
       {/* Header with title and points */}
       <div className="flex justify-between items-start mb-2">
-        <h3 className="font-semibold text-gray-900 text-xs sm:text-sm leading-tight flex-1 mr-2">
+        <h3 className="font-semibold text-gray-900 text-xs sm:text-sm leading-tight flex-1 mr-2 break-words overflow-hidden">
           {task.name}
         </h3>
         <div className={`
@@ -93,9 +93,9 @@ export default function TaskCard({ task, onComplete, onEdit, isDragging = false 
       </div>
 
       {/* Description */}
-      <p className="text-gray-600 text-xs sm:text-sm mb-2 sm:mb-3 line-clamp-2">
+      <div className={`text-gray-600 text-xs sm:text-sm mb-2 sm:mb-3 ${isExpanded ? '' : 'line-clamp-2'} break-words overflow-hidden`}>
         {task.description}
-      </p>
+      </div>
 
       {/* Status and metadata */}
       <div className="flex items-center justify-between">
@@ -155,20 +155,19 @@ export default function TaskCard({ task, onComplete, onEdit, isDragging = false 
         </div>
       )}
 
-      {/* Edit button for backlog tasks */}
-      {task.status === 'backlog' && onEdit && (
-        <div className="mt-2 pt-2 border-t border-gray-100">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onEdit(task.id);
-            }}
-            className="text-xs text-blue-600 hover:text-blue-800 transition-colors"
-          >
-            Edit Task
-          </button>
-        </div>
-      )}
+      {/* Expand/Collapse button */}
+      <div className="mt-2 pt-2 border-t border-gray-100">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsExpanded(!isExpanded);
+          }}
+          className="text-xs text-blue-600 hover:text-blue-800 transition-colors flex items-center gap-1"
+        >
+          <span>{isExpanded ? '▲' : '▼'}</span>
+          <span>{isExpanded ? 'Show Less' : 'Show More'}</span>
+        </button>
+      </div>
 
       {/* Drag handle indicator */}
       {task.status !== 'completed' && (

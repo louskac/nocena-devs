@@ -9,9 +9,9 @@ interface TaskColumnProps {
   tasks: Task[];
   developer?: Developer;
   isBacklog?: boolean;
+  isFinished?: boolean;
   onTaskDrop: (taskId: string, targetColumn: string) => void;
   onTaskComplete?: (taskId: string) => void;
-  onTaskEdit?: (taskId: string) => void;
 }
 
 export default function TaskColumn({
@@ -19,9 +19,9 @@ export default function TaskColumn({
   tasks,
   developer,
   isBacklog = false,
+  isFinished = false,
   onTaskDrop,
-  onTaskComplete,
-  onTaskEdit
+  onTaskComplete
 }: TaskColumnProps) {
   const [isDragOver, setIsDragOver] = useState(false);
   const [dragValidation, setDragValidation] = useState<{
@@ -108,11 +108,16 @@ export default function TaskColumn({
 
   // Validate drop operation
   const validateDrop = (dragData: DragData): { isValid: boolean; message?: string } => {
-    const targetColumn = isBacklog ? 'backlog' : developer?.id || '';
+    const targetColumn = isBacklog ? 'backlog' : isFinished ? 'finished' : developer?.id || '';
     
     // Can't drop on the same column
     if (dragData.sourceColumn === targetColumn) {
       return { isValid: false, message: 'Cannot drop task in the same column' };
+    }
+
+    // Can't drop anything on finished tasks column
+    if (isFinished) {
+      return { isValid: false, message: 'Cannot move tasks to finished column - tasks are completed automatically' };
     }
 
     // Can't drop completed tasks
@@ -137,6 +142,15 @@ export default function TaskColumn({
         title: 'Backlog',
         subtitle: `${tasks.length} task${tasks.length !== 1 ? 's' : ''}`,
         icon: '📋'
+      };
+    }
+
+    if (isFinished) {
+      const totalPoints = tasks.reduce((sum, task) => sum + task.points, 0);
+      return {
+        title: 'Finished Tasks',
+        subtitle: `${tasks.length} completed • ${totalPoints} points`,
+        icon: '✅'
       };
     }
 
@@ -218,11 +232,13 @@ export default function TaskColumn({
           {tasks.length === 0 && !isDragOver ? (
             <div className="text-center py-6 sm:py-8 text-gray-500">
               <div className="text-3xl sm:text-4xl mb-2">
-                {isBacklog ? '📝' : '🎯'}
+                {isBacklog ? '📝' : isFinished ? '🎉' : '🎯'}
               </div>
               <p className="text-xs sm:text-sm px-2">
                 {isBacklog 
                   ? 'No tasks in backlog. Create a new task to get started!' 
+                  : isFinished
+                  ? 'No completed tasks yet. Complete some tasks to see them here!'
                   : 'No tasks assigned. Drag tasks from the backlog to start working!'
                 }
               </p>
@@ -233,7 +249,6 @@ export default function TaskColumn({
                 key={task.id}
                 task={task}
                 onComplete={onTaskComplete}
-                onEdit={onTaskEdit}
               />
             ))
           )}
